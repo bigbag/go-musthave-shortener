@@ -22,7 +22,7 @@ func NewURLHandler(urlRoute fiber.Router, us URLService, l logrus.FieldLogger) {
 }
 
 func (h *URLHandler) createURL(c *fiber.Ctx) error {
-	fullURL := string(c.Body()[:])
+	fullURL := string(c.Body())
 	if fullURL == "" {
 		return utils.SendJSONError(c, fiber.StatusBadRequest, "Please specify a valid full url")
 	}
