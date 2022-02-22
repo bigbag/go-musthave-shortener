@@ -1,8 +1,9 @@
 package url
 
 type URL struct {
-	ShortID string
-	FullURL string
+	ShortID  string `json:"-"`
+	FullURL  string `json:"url"`
+	ShortURL string `json:"-"`
 }
 
 type URLRepository interface {
@@ -12,5 +13,5 @@ type URLRepository interface {
 
 type URLService interface {
 	FetchURL(shortID string) (*URL, error)
-	BuildURL(fullURL string) (*URL, error)
+	BuildURL(baseURL string, fullURL string) (*URL, error)
 }
