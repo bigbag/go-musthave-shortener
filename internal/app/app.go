@@ -18,7 +18,7 @@ type Server struct {
 }
 
 func New(l logrus.FieldLogger, cfg *config.Config) *Server {
-	appCfg := fiber.Config{
+	fiberCfg := fiber.Config{
 		ReadTimeout: time.Second * cfg.Server.ReadTimeout,
 		IdleTimeout: time.Second * cfg.Server.IdleTimeout,
 		Immutable:   true,
@@ -28,7 +28,7 @@ func New(l logrus.FieldLogger, cfg *config.Config) *Server {
 		},
 	}
 
-	f := fiber.New(appCfg)
+	f := fiber.New(fiberCfg)
 
 	f.Use(logger.New(logger.Config{
 		Output: l.(*logrus.Logger).Writer(),
@@ -36,7 +36,7 @@ func New(l logrus.FieldLogger, cfg *config.Config) *Server {
 
 	urlRepository := url.NewURLRepository()
 	urlService := url.NewURLService(urlRepository)
-	url.NewURLHandler(f.Group(""), urlService, l)
+	url.NewURLHandler(f.Group(""), urlService, cfg, l)
 
 	return &Server{l: l, f: f}
 }
