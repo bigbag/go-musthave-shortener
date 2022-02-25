@@ -4,20 +4,30 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/sirupsen/logrus"
 
+	"github.com/bigbag/go-musthave-shortener/internal/config"
 	"github.com/bigbag/go-musthave-shortener/internal/utils"
 )
 
 type URLHandler struct {
 	urlService URLService
 	log        logrus.FieldLogger
+	cfg        *config.Config
 }
 
-func NewURLHandler(urlRoute fiber.Router, us URLService, l logrus.FieldLogger) {
-	handler := &URLHandler{urlService: us, log: l}
+func NewURLHandler(urlRoute fiber.Router, us URLService, cfg *config.Config, l logrus.FieldLogger) {
+	handler := &URLHandler{urlService: us, log: l, cfg: cfg}
 
 	urlRoute.Post("/", handler.createShortURL)
 	urlRoute.Post("/api/shorten", handler.createShortURLJson)
 	urlRoute.Get("/:shortID", handler.changeLocation)
+
+}
+
+func (h *URLHandler) getBaseURL(c *fiber.Ctx) string {
+	if h.cfg.BaseURL != "" {
+		return h.cfg.BaseURL
+	}
+	return c.BaseURL()
 
 }
 
@@ -27,7 +37,7 @@ func (h *URLHandler) createShortURLJson(c *fiber.Ctx) error {
 		return utils.SendJSONError(c, fiber.StatusBadRequest, "Please specify a valid full url")
 	}
 
-	url, err := h.urlService.BuildURL(c.BaseURL(), req.FullURL)
+	url, err := h.urlService.BuildURL(h.getBaseURL(c), req.FullURL)
 	if err != nil {
 		return utils.SendJSONError(c, fiber.StatusInternalServerError, err.Error())
 	}
@@ -43,7 +53,7 @@ func (h *URLHandler) createShortURL(c *fiber.Ctx) error {
 		return utils.SendJSONError(c, fiber.StatusBadRequest, "Please specify a valid full url")
 	}
 
-	url, err := h.urlService.BuildURL(c.BaseURL(), fullURL)
+	url, err := h.urlService.BuildURL(h.getBaseURL(c), fullURL)
 	if err != nil {
 		return utils.SendJSONError(c, fiber.StatusInternalServerError, err.Error())
 	}
