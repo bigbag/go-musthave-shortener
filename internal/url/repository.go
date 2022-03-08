@@ -35,3 +35,7 @@ func (r *urlRepository) CreateURL(fullURL string) (*URL, error) {
 
 	return &URL{ShortID: shortID, FullURL: fullURL}, nil
 }
+
+func (r *urlRepository) Close() error {
+	return r.storageService.Shutdown()
+}

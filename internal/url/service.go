@@ -21,3 +21,7 @@ func (s *urlService) BuildURL(baseURL string, fullURL string) (*URL, error) {
 	url.ShortURL = fmt.Sprintf("%s/%s", baseURL, url.ShortID)
 	return url, err
 }
+
+func (s *urlService) Shutdown() error {
+	return s.urlReposiory.Close()
+}

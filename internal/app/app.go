@@ -14,8 +14,9 @@ import (
 )
 
 type Server struct {
-	l logrus.FieldLogger
-	f *fiber.App
+	l          logrus.FieldLogger
+	f          *fiber.App
+	urlService url.URLService
 }
 
 func New(l logrus.FieldLogger, cfg *config.Config) *Server {
@@ -35,8 +36,7 @@ func New(l logrus.FieldLogger, cfg *config.Config) *Server {
 		Output: l.(*logrus.Logger).Writer(),
 	}))
 
-	storageRepository := storage.NewMemoryStorage()
-	storageService := storage.NewStorageService(storageRepository)
+	storageService, _ := storage.NewStorageService(cfg)
 
 	urlRepository := url.NewURLRepository(storageService)
 	urlService := url.NewURLService(urlRepository)

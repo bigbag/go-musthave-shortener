@@ -8,9 +8,10 @@ import (
 )
 
 type Config struct {
-	ServiceName string `envconfig:"SERVICE_NAME" default:"shortener"`
-	BaseURL     string `envconfig:"BASE_URL"`
-	Server      struct {
+	ServiceName     string `envconfig:"SERVICE_NAME" default:"shortener"`
+	BaseURL         string `envconfig:"BASE_URL"`
+	FileStoragePath string `envconfig:"FILE_STORAGE_PATH"`
+	Server          struct {
 		Listen      string        `envconfig:"SERVER_ADDRESS" default:":8080"`
 		ReadTimeout time.Duration `envconfig:"SERVER_READ_TIMEOUT" default:"5s"`
 		IdleTimeout time.Duration `envconfig:"SERVER_IDLE_TIMEOUT" default:"5s"`
