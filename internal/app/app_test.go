@@ -15,6 +15,10 @@ import (
 	"github.com/bigbag/go-musthave-shortener/internal/config"
 )
 
+var (
+	testServer *Server
+)
+
 type TestCase struct {
 	description    string
 	requestRoute   string
@@ -27,8 +31,12 @@ type TestCase struct {
 }
 
 func getNewTestServer() *Server {
-	cfg, _ := config.New()
-	return New(logrus.New(), cfg)
+	if testServer == nil {
+		cfg, _ := config.New()
+		testServer = New(logrus.New(), cfg)
+	}
+
+	return testServer
 }
 
 func makeTestRequest(server *Server, test TestCase) (*http.Response, error) {

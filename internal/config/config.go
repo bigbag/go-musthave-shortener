@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"flag"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
@@ -12,7 +13,7 @@ type Config struct {
 	BaseURL         string `envconfig:"BASE_URL"`
 	FileStoragePath string `envconfig:"FILE_STORAGE_PATH"`
 	Server          struct {
-		Listen      string        `envconfig:"SERVER_ADDRESS" default:":8080"`
+		Listen      string        `envconfig:"SERVER_ADDRESS"  default:":8080"`
 		ReadTimeout time.Duration `envconfig:"SERVER_READ_TIMEOUT" default:"5s"`
 		IdleTimeout time.Duration `envconfig:"SERVER_IDLE_TIMEOUT" default:"5s"`
 	}
@@ -31,6 +32,11 @@ func New() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	flag.StringVar(&cfg.Server.Listen, "a", cfg.Server.Listen, "listen address. env: SERVER_ADDRESS")
+	flag.StringVar(&cfg.BaseURL, "b", cfg.BaseURL, "base url for short link. env: BASE_URL")
+	flag.StringVar(&cfg.FileStoragePath, "f", cfg.FileStoragePath, "file storage path. env: FILE_STORAGE_PATH")
+	flag.Parse()
 
 	return cfg, nil
 }
