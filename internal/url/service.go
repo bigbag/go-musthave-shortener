@@ -12,12 +12,16 @@ func NewURLService(r URLRepository) URLService {
 	}
 }
 
-func (s *urlService) FetchURL(shortURL string) (*URL, error) {
-	return s.urlReposiory.GetURL(shortURL)
+func (s *urlService) FetchURL(shortID string) (*URL, error) {
+	return s.urlReposiory.GetURL(shortID)
 }
 
 func (s *urlService) BuildURL(baseURL string, fullURL string) (*URL, error) {
 	url, err := s.urlReposiory.CreateURL(fullURL)
 	url.ShortURL = fmt.Sprintf("%s/%s", baseURL, url.ShortID)
 	return url, err
+}
+
+func (s *urlService) Shutdown() error {
+	return s.urlReposiory.Close()
 }

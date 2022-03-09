@@ -8,13 +8,15 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/bigbag/go-musthave-shortener/internal/config"
+	"github.com/bigbag/go-musthave-shortener/internal/storage"
 	"github.com/bigbag/go-musthave-shortener/internal/url"
 	"github.com/bigbag/go-musthave-shortener/internal/utils"
 )
 
 type Server struct {
-	l logrus.FieldLogger
-	f *fiber.App
+	l          logrus.FieldLogger
+	f          *fiber.App
+	urlService url.URLService
 }
 
 func New(l logrus.FieldLogger, cfg *config.Config) *Server {
@@ -34,7 +36,9 @@ func New(l logrus.FieldLogger, cfg *config.Config) *Server {
 		Output: l.(*logrus.Logger).Writer(),
 	}))
 
-	urlRepository := url.NewURLRepository()
+	storageService, _ := storage.NewStorageService(cfg)
+
+	urlRepository := url.NewURLRepository(storageService)
 	urlService := url.NewURLService(urlRepository)
 	url.NewURLHandler(f.Group(""), urlService, cfg, l)
 
