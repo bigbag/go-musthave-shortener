@@ -1,40 +1,41 @@
 package url
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/google/uuid"
+
+	"github.com/bigbag/go-musthave-shortener/internal/storage"
 )
 
-type storageRepository struct {
-	shortStorage map[string]*URL
-	fullStorage  map[string]*URL
+type urlRepository struct {
+	storageService storage.StorageService
 }
 
-func NewURLRepository() URLRepository {
-	return &storageRepository{shortStorage: make(map[string]*URL), fullStorage: make(map[string]*URL)}
+func NewURLRepository(storageService storage.StorageService) URLRepository {
+	return &urlRepository{storageService: storageService}
 }
 
-func (r *storageRepository) GetURL(shortURL string) (*URL, error) {
-	url, ok := r.shortStorage[shortURL]
-	if !ok {
-		return nil, errors.New("NOT FOUND URL")
+func (r *urlRepository) GetURL(shortID string) (*URL, error) {
+	fullURL, err := r.storageService.Get(shortID)
+	if err != nil {
+		return nil, err
 	}
-	return url, nil
+	return &URL{ShortID: shortID, FullURL: fullURL}, nil
 }
 
-func (r *storageRepository) CreateURL(fullURL string) (*URL, error) {
-	url, ok := r.fullStorage[fullURL]
-	if ok {
-		return url, nil
-	}
+func (r *urlRepository) CreateURL(fullURL string) (*URL, error) {
+	var err error
 
 	shortID := strings.Replace(uuid.New().String(), "-", "", -1)
-	url = &URL{ShortID: shortID, FullURL: fullURL}
+	shortID, err = r.storageService.Save(shortID, fullURL)
+	if err != nil {
+		return nil, err
+	}
 
-	r.fullStorage[fullURL] = url
-	r.shortStorage[shortID] = url
+	return &URL{ShortID: shortID, FullURL: fullURL}, nil
+}
 
-	return url, nil
+func (r *urlRepository) Close() error {
+	return r.storageService.Shutdown()
 }

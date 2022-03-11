@@ -4,7 +4,7 @@ help: Makefile
 	@sed -n 's/^##//p' $<
 
 
-## lint	: run unit tests
+## test	: run unit tests
 test:
 	go test -v -race \
 	-covermode=atomic -coverprofile=coverage.out \

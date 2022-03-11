@@ -1,6 +1,8 @@
 package app
 
 import (
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -13,19 +15,28 @@ import (
 	"github.com/bigbag/go-musthave-shortener/internal/config"
 )
 
+var (
+	testServer *Server
+)
+
 type TestCase struct {
-	description   string
-	requestRoute  string
-	requestMethod string
-	requestBody   string
-	expectedError bool
-	expectedCode  int
-	expectedBody  string
+	description    string
+	requestRoute   string
+	requestMethod  string
+	requestBody    string
+	expectedError  bool
+	expectedCode   int
+	expectedBody   string
+	requestHeaders map[string][]string
 }
 
 func getNewTestServer() *Server {
-	cfg, _ := config.New()
-	return New(logrus.New(), cfg)
+	if testServer == nil {
+		cfg, _ := config.New()
+		testServer = New(logrus.New(), cfg)
+	}
+
+	return testServer
 }
 
 func makeTestRequest(server *Server, test TestCase) (*http.Response, error) {
@@ -34,6 +45,9 @@ func makeTestRequest(server *Server, test TestCase) (*http.Response, error) {
 		test.requestRoute,
 		strings.NewReader(test.requestBody),
 	)
+	if test.requestHeaders != nil {
+		req.Header = test.requestHeaders
+	}
 
 	return server.f.Test(req, -1)
 
@@ -62,28 +76,26 @@ func TestCreateURLHandler(t *testing.T) {
 		{
 			description:   "method not allowed",
 			requestRoute:  "/",
-			requestMethod: "GET",
-			requestBody:   "",
+			requestMethod: http.MethodGet,
 			expectedError: false,
-			expectedCode:  500,
+			expectedCode:  http.StatusInternalServerError,
 			expectedBody:  `{"code":500,"message":"Method Not Allowed"}`,
 		},
 		{
 			description:   "empty payload",
 			requestRoute:  "/",
-			requestMethod: "POST",
-			requestBody:   "",
+			requestMethod: http.MethodPost,
 			expectedError: false,
-			expectedCode:  400,
+			expectedCode:  http.StatusBadRequest,
 			expectedBody:  `{"code":400,"message":"Please specify a valid full url"}`,
 		},
 		{
 			description:   "success",
 			requestRoute:  "/",
-			requestMethod: "POST",
+			requestMethod: http.MethodPost,
 			requestBody:   "https://github.com",
 			expectedError: false,
-			expectedCode:  201,
+			expectedCode:  http.StatusCreated,
 			expectedBody:  "",
 		},
 	}
@@ -102,10 +114,10 @@ func TestFullFlow(t *testing.T) {
 	test := TestCase{
 		description:   "create url",
 		requestRoute:  "/",
-		requestMethod: "POST",
+		requestMethod: http.MethodPost,
 		requestBody:   originFullURL,
 		expectedError: false,
-		expectedCode:  201,
+		expectedCode:  http.StatusCreated,
 		expectedBody:  "",
 	}
 	res, err := makeTestRequest(server, test)
@@ -117,10 +129,105 @@ func TestFullFlow(t *testing.T) {
 	test = TestCase{
 		description:   "get full url",
 		requestRoute:  shortURL.Path,
-		requestMethod: "GET",
-		requestBody:   "",
+		requestMethod: http.MethodGet,
 		expectedError: false,
-		expectedCode:  307,
+		expectedCode:  http.StatusTemporaryRedirect,
+		expectedBody:  "",
+	}
+	res, err = makeTestRequest(server, test)
+	fullURL := res.Header.Values("Location")[0]
+
+	checkResponse(t, test, res, err)
+
+	assert.Equalf(t, originFullURL, fullURL, test.description)
+
+}
+
+func TestCreateURLJsonHandler(t *testing.T) {
+	tests := []TestCase{
+		{
+			description:   "method not allowed",
+			requestRoute:  "/api/shorten",
+			requestMethod: http.MethodGet,
+			expectedError: false,
+			expectedCode:  http.StatusInternalServerError,
+			expectedBody:  `{"code":500,"message":"Method Not Allowed"}`,
+		},
+		{
+			description:   "empty payload",
+			requestRoute:  "/api/shorten",
+			requestMethod: http.MethodPost,
+			expectedError: false,
+			expectedCode:  http.StatusBadRequest,
+			expectedBody:  `{"code":400,"message":"Please specify a valid full url"}`,
+		},
+		{
+			description:   "not valid content type",
+			requestRoute:  "/api/shorten",
+			requestMethod: http.MethodPost,
+			requestBody:   `{"url":"https://github.com"}`,
+			requestHeaders: http.Header{
+				"Content-Type": []string{"text/html"},
+			},
+			expectedError: false,
+			expectedCode:  http.StatusBadRequest,
+			expectedBody:  `{"code":400,"message":"Please specify a valid full url"}`,
+		},
+		{
+			description:   "success",
+			requestRoute:  "/api/shorten",
+			requestMethod: http.MethodPost,
+			requestBody:   `{"url":"https://github.com"}`,
+			requestHeaders: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			expectedError: false,
+			expectedCode:  http.StatusCreated,
+			expectedBody:  "",
+		},
+	}
+
+	server := getNewTestServer()
+	for _, test := range tests {
+		res, err := makeTestRequest(server, test)
+		checkResponse(t, test, res, err)
+	}
+}
+
+func TestFullFlowJson(t *testing.T) {
+	type ShorterResult struct {
+		Result string `json:"result"`
+	}
+
+	originFullURL := "https://github.com"
+	server := getNewTestServer()
+
+	test := TestCase{
+		description:   "create url",
+		requestRoute:  "/api/shorten",
+		requestMethod: http.MethodPost,
+		requestBody:   fmt.Sprintf(`{"url":"%s"}`, originFullURL),
+		requestHeaders: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		expectedError: false,
+		expectedCode:  http.StatusCreated,
+		expectedBody:  "",
+	}
+	res, err := makeTestRequest(server, test)
+
+	var shorterResult ShorterResult
+	json.NewDecoder(res.Body).Decode(&shorterResult)
+	shortURL, _ := url.Parse(shorterResult.Result)
+
+	checkResponse(t, test, res, err)
+
+	test = TestCase{
+		description:   "get full url",
+		requestRoute:  shortURL.Path,
+		requestMethod: http.MethodGet,
+		expectedError: false,
+		expectedCode:  http.StatusTemporaryRedirect,
 		expectedBody:  "",
 	}
 	res, err = makeTestRequest(server, test)
