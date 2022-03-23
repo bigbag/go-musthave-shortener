@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/sirupsen/logrus"
 
@@ -34,6 +35,10 @@ func New(l logrus.FieldLogger, cfg *config.Config) *Server {
 
 	f.Use(logger.New(logger.Config{
 		Output: l.(*logrus.Logger).Writer(),
+	}))
+
+	f.Use(compress.New(compress.Config{
+		Level: compress.LevelBestCompression,
 	}))
 
 	storageService, _ := storage.NewStorageService(cfg)
