@@ -37,34 +37,46 @@ func NewFileRepository(fileStoragePath string) (StorageRepository, error) {
 	return repo, nil
 }
 
-func (r *fileRepository) Get(key string) (string, error) {
+func (r *fileRepository) GetByKey(key string) (*Record, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	record, ok := r.db[key]
 	if !ok {
-		return "", errors.New("NOT FOUND URL")
+		return record, errors.New("NOT FOUND URL")
 	}
-	return record.Value, nil
+	return record, nil
 }
 
-func (r *fileRepository) Save(key string, value string) (string, error) {
+func (r *fileRepository) GetAllByUserID(userID string) ([]*Record, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
+	result := make([]*Record, 0, 100)
 	for _, record := range r.db {
-		if record.Value == value {
-			return record.Key, nil
+		if record.UserID == userID {
+			result = append(result, record)
+		}
+	}
+	return result, nil
+}
+
+func (r *fileRepository) Save(record *Record) (*Record, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, oldRecord := range r.db {
+		if oldRecord.Value == record.Value {
+			return oldRecord, nil
 		}
 	}
 
-	record := &Record{Key: key, Value: value}
-	r.db[key] = record
+	r.db[record.Key] = record
 	if err := r.producer.Write(record); err != nil {
-		return "", err
+		return record, err
 	}
 
-	return key, nil
+	return record, nil
 }
 
 func (r *fileRepository) Close() error {

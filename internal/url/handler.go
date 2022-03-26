@@ -1,11 +1,12 @@
 package url
 
 import (
-	"github.com/gofiber/fiber/v2"
-	"github.com/sirupsen/logrus"
+	// "encoding/json"
 
 	"github.com/bigbag/go-musthave-shortener/internal/config"
 	"github.com/bigbag/go-musthave-shortener/internal/utils"
+	"github.com/gofiber/fiber/v2"
+	"github.com/sirupsen/logrus"
 )
 
 type URLHandler struct {
@@ -18,8 +19,9 @@ func NewURLHandler(urlRoute fiber.Router, us URLService, cfg *config.Config, l l
 	handler := &URLHandler{urlService: us, log: l, cfg: cfg}
 
 	urlRoute.Post("/", handler.createShortURL)
-	urlRoute.Post("/api/shorten", handler.createShortURLJson)
 	urlRoute.Get("/:shortID", handler.changeLocation)
+	urlRoute.Post("/api/shorten", handler.createShortURLJson)
+	urlRoute.Get("/api/user/urls", handler.getUserURLs)
 
 }
 
@@ -32,12 +34,13 @@ func (h *URLHandler) getBaseURL(c *fiber.Ctx) string {
 }
 
 func (h *URLHandler) createShortURLJson(c *fiber.Ctx) error {
-	req := new(URL)
+	req := new(ShortenRequest)
 	if err := c.BodyParser(req); err != nil {
 		return utils.SendJSONError(c, fiber.StatusBadRequest, "Please specify a valid full url")
 	}
 
-	url, err := h.urlService.BuildURL(h.getBaseURL(c), req.FullURL)
+	userID := c.Locals(h.cfg.UserContextKey).(string)
+	url, err := h.urlService.BuildURL(h.getBaseURL(c), req.FullURL, userID)
 	if err != nil {
 		return utils.SendJSONError(c, fiber.StatusInternalServerError, err.Error())
 	}
@@ -53,7 +56,8 @@ func (h *URLHandler) createShortURL(c *fiber.Ctx) error {
 		return utils.SendJSONError(c, fiber.StatusBadRequest, "Please specify a valid full url")
 	}
 
-	url, err := h.urlService.BuildURL(h.getBaseURL(c), fullURL)
+	userID := c.Locals(h.cfg.UserContextKey).(string)
+	url, err := h.urlService.BuildURL(h.getBaseURL(c), fullURL, userID)
 	if err != nil {
 		return utils.SendJSONError(c, fiber.StatusInternalServerError, err.Error())
 	}
@@ -77,4 +81,19 @@ func (h *URLHandler) changeLocation(c *fiber.Ctx) error {
 	c.Location(url.FullURL)
 	return c.Status(fiber.StatusTemporaryRedirect).SendString("")
 
+}
+
+func (h *URLHandler) getUserURLs(c *fiber.Ctx) error {
+	userID := c.Locals(h.cfg.UserContextKey).(string)
+
+	result, err := h.urlService.FetchUserURLs(h.getBaseURL(c), userID)
+	if err != nil {
+		return utils.SendJSONError(c, fiber.StatusInternalServerError, err.Error())
+	}
+
+	if len(result) == 0 {
+		return utils.SendJSONError(c, fiber.StatusNoContent, "URLs not found")
+	}
+
+	return c.Status(fiber.StatusOK).JSON(result)
 }
