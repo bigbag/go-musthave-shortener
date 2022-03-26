@@ -28,12 +28,16 @@ func NewStorageService(cfg *config.Config) (StorageService, error) {
 	return service, nil
 }
 
-func (s *StorageService) Get(key string) (string, error) {
-	return s.storageRepository.Get(key)
+func (s *StorageService) GetByKey(key string) (*repository.Record, error) {
+	return s.storageRepository.GetByKey(key)
 }
 
-func (s *StorageService) Save(key string, value string) (string, error) {
-	return s.storageRepository.Save(key, value)
+func (s *StorageService) GetAllByUserID(userID string) ([]*repository.Record, error) {
+	return s.storageRepository.GetAllByUserID(userID)
+}
+
+func (s *StorageService) Save(record *repository.Record) (*repository.Record, error) {
+	return s.storageRepository.Save(record)
 }
 
 func (s *StorageService) Shutdown() error {
