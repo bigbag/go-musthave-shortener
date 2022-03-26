@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/bigbag/go-musthave-shortener/internal/config"
+	"github.com/bigbag/go-musthave-shortener/internal/middleware/userid"
 	"github.com/bigbag/go-musthave-shortener/internal/storage"
 	"github.com/bigbag/go-musthave-shortener/internal/url"
 	"github.com/bigbag/go-musthave-shortener/internal/utils"
@@ -40,10 +41,14 @@ func New(l logrus.FieldLogger, cfg *config.Config) *Server {
 	f.Use(compress.New(compress.Config{
 		Level: compress.LevelBestCompression,
 	}))
+	f.Use(userid.New(userid.Config{
+		Secret:     cfg.UserCookieSecret,
+		ContextKey: cfg.UserContextKey,
+	}))
 
-	storageService, _ := storage.NewStorageService(cfg)
+	urlStorage, _ := storage.NewStorageService(cfg)
 
-	urlRepository := url.NewURLRepository(storageService)
+	urlRepository := url.NewURLRepository(urlStorage)
 	urlService := url.NewURLService(urlRepository)
 	url.NewURLHandler(f.Group(""), urlService, cfg, l)
 

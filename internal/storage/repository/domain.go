@@ -1,12 +1,14 @@
 package repository
 
 type Record struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key    string `json:"key"`
+	Value  string `json:"value"`
+	UserID string `json:"user_id"`
 }
 
 type StorageRepository interface {
-	Get(key string) (string, error)
-	Save(key string, value string) (string, error)
+	GetByKey(key string) (*Record, error)
+	GetAllByUserID(userID string) ([]*Record, error)
+	Save(record *Record) (*Record, error)
 	Close() error
 }

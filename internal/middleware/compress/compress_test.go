@@ -21,7 +21,6 @@ func init() {
 	filedata = dat
 }
 
-// go test -run Test_Compress_Gzip
 func Test_Compress_Gzip(t *testing.T) {
 	app := fiber.New()
 
