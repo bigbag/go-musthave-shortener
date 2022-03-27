@@ -8,7 +8,9 @@ type Record struct {
 
 type StorageRepository interface {
 	GetByKey(key string) (*Record, error)
+	GetByValue(value string) (*Record, error)
 	GetAllByUserID(userID string) ([]*Record, error)
 	Save(record *Record) (*Record, error)
+	Status() error
 	Close() error
 }

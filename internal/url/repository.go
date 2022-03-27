@@ -54,6 +54,10 @@ func (r *urlRepository) FindAllByUserID(userID string) ([]*URL, error) {
 	return result, nil
 }
 
+func (r *urlRepository) Status() error {
+	return r.urlStorage.Status()
+}
+
 func (r *urlRepository) Close() error {
 	return r.urlStorage.Shutdown()
 }
