@@ -1,8 +1,6 @@
 package url
 
 import (
-	// "encoding/json"
-
 	"github.com/bigbag/go-musthave-shortener/internal/config"
 	"github.com/bigbag/go-musthave-shortener/internal/utils"
 	"github.com/gofiber/fiber/v2"
@@ -18,6 +16,8 @@ type URLHandler struct {
 func NewURLHandler(urlRoute fiber.Router, us URLService, cfg *config.Config, l logrus.FieldLogger) {
 	handler := &URLHandler{urlService: us, log: l, cfg: cfg}
 
+	urlRoute.Get("/ping", handler.getStatus)
+
 	urlRoute.Post("/", handler.createShortURL)
 	urlRoute.Get("/:shortID", handler.changeLocation)
 	urlRoute.Post("/api/shorten", handler.createShortURLJson)
@@ -31,6 +31,13 @@ func (h *URLHandler) getBaseURL(c *fiber.Ctx) string {
 	}
 	return c.BaseURL()
 
+}
+func (h *URLHandler) getStatus(c *fiber.Ctx) error {
+	err := h.urlService.Status()
+	if err != nil {
+		return utils.SendJSONError(c, fiber.StatusInternalServerError, "PG connection error")
+	}
+	return c.Status(fiber.StatusOK).JSON(&fiber.Map{"result": "OK"})
 }
 
 func (h *URLHandler) createShortURLJson(c *fiber.Ctx) error {

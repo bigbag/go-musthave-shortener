@@ -24,9 +24,21 @@ func (r *memoryRepository) GetByKey(key string) (*Record, error) {
 
 	record, ok := r.db[key]
 	if !ok {
-		return record, errors.New("NOT FOUND URL")
+		return record, errors.New("not found url")
 	}
 	return record, nil
+}
+
+func (r *memoryRepository) GetByValue(value string) (*Record, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, record := range r.db {
+		if record.Value == value {
+			return record, nil
+		}
+	}
+	return nil, nil
 }
 
 func (r *memoryRepository) GetAllByUserID(userID string) ([]*Record, error) {
@@ -46,14 +58,12 @@ func (r *memoryRepository) Save(record *Record) (*Record, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	for _, oldRecord := range r.db {
-		if oldRecord.Value == record.Value {
-			return oldRecord, nil
-		}
-	}
-
 	r.db[record.Key] = record
 	return record, nil
+}
+
+func (r *memoryRepository) Status() error {
+	return nil
 }
 
 func (r *memoryRepository) Close() error {

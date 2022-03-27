@@ -48,6 +48,18 @@ func (r *fileRepository) GetByKey(key string) (*Record, error) {
 	return record, nil
 }
 
+func (r *fileRepository) GetByValue(value string) (*Record, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, record := range r.db {
+		if record.Value == value {
+			return record, nil
+		}
+	}
+	return nil, nil
+}
+
 func (r *fileRepository) GetAllByUserID(userID string) ([]*Record, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -65,18 +77,16 @@ func (r *fileRepository) Save(record *Record) (*Record, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	for _, oldRecord := range r.db {
-		if oldRecord.Value == record.Value {
-			return oldRecord, nil
-		}
-	}
-
 	r.db[record.Key] = record
 	if err := r.producer.Write(record); err != nil {
 		return record, err
 	}
 
 	return record, nil
+}
+
+func (r *fileRepository) Status() error {
+	return nil
 }
 
 func (r *fileRepository) Close() error {
