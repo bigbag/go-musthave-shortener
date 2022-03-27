@@ -5,12 +5,12 @@ import (
 )
 
 type urlService struct {
-	urlReposiory URLRepository
+	urlRepository URLRepository
 }
 
 func NewURLService(r URLRepository) URLService {
 	return &urlService{
-		urlReposiory: r,
+		urlRepository: r,
 	}
 }
 
@@ -19,20 +19,20 @@ func (s *urlService) BuildURL(
 	fullURL string,
 	userID string,
 ) (*URL, error) {
-	url, err := s.urlReposiory.CreateURL(fullURL, userID)
+	url, err := s.urlRepository.CreateURL(fullURL, userID)
 	url.ShortURL = fmt.Sprintf("%s/%s", baseURL, url.ShortID)
 	return url, err
 }
 
 func (s *urlService) FetchURL(shortID string) (*URL, error) {
-	return s.urlReposiory.GetURL(shortID)
+	return s.urlRepository.GetURL(shortID)
 }
 
 func (s *urlService) FetchUserURLs(
 	baseURL string,
 	userID string,
 ) ([]*UserURL, error) {
-	urls, err := s.urlReposiory.FindAllByUserID(userID)
+	urls, err := s.urlRepository.FindAllByUserID(userID)
 	if err != nil {
 		return nil, err
 	}
@@ -47,6 +47,10 @@ func (s *urlService) FetchUserURLs(
 	return result, nil
 }
 
+func (s *urlService) Status() error {
+	return s.urlRepository.Status()
+}
+
 func (s *urlService) Shutdown() error {
-	return s.urlReposiory.Close()
+	return s.urlRepository.Close()
 }
