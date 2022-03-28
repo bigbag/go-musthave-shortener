@@ -62,6 +62,16 @@ func (r *memoryRepository) Save(record *Record) (*Record, error) {
 	return record, nil
 }
 
+func (r *memoryRepository) SaveBatchOfURL(records []*Record) error {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, record := range records {
+		r.db[record.Key] = record
+	}
+	return nil
+}
+
 func (r *memoryRepository) Status() error {
 	return nil
 }

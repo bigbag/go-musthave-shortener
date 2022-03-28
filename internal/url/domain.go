@@ -1,14 +1,29 @@
 package url
 
 type URL struct {
-	ShortID  string
-	FullURL  string
-	ShortURL string
+	ShortID       string
+	FullURL       string
+	ShortURL      string
+	CorrelationID string
 }
 
-type ShortenRequest struct {
+type JSONRequest struct {
 	FullURL string `json:"url"`
 }
+
+type BatchRequestItem struct {
+	FullURL       string `json:"original_url"`
+	CorrelationID string `json:"correlation_id"`
+}
+
+type BatchRequest []BatchRequestItem
+
+type BatchResponseItem struct {
+	ShortURL      string `json:"short_url"`
+	CorrelationID string `json:"correlation_id"`
+}
+
+type BatchResponse []*BatchResponseItem
 
 type UserURL struct {
 	FullURL  string `json:"original_url"`
@@ -18,6 +33,7 @@ type UserURL struct {
 type URLRepository interface {
 	GetURL(shortID string) (*URL, error)
 	CreateURL(fullURL string, userID string) (*URL, error)
+	CreateBatchOfURL(items BatchRequest, userID string) ([]*URL, error)
 	FindAllByUserID(userID string) ([]*URL, error)
 	Status() error
 	Close() error
@@ -26,6 +42,11 @@ type URLRepository interface {
 type URLService interface {
 	FetchURL(shortID string) (*URL, error)
 	BuildURL(baseURL string, fullURL string, userID string) (*URL, error)
+	BuildBatchOfURL(
+		baseURL string,
+		items BatchRequest,
+		userID string,
+	) (BatchResponse, error)
 	FetchUserURLs(baseURL string, userID string) ([]*UserURL, error)
 	Status() error
 	Shutdown() error

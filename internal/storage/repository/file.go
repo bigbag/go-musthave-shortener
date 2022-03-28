@@ -85,6 +85,22 @@ func (r *fileRepository) Save(record *Record) (*Record, error) {
 	return record, nil
 }
 
+func (r *fileRepository) SaveBatchOfURL(records []*Record) error {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var err error
+
+	for _, record := range records {
+		r.db[record.Key] = record
+		if err = r.producer.Write(record); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (r *fileRepository) Status() error {
 	return nil
 }
