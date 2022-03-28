@@ -28,21 +28,25 @@ func (r *urlRepository) GetURL(shortID string) (*URL, error) {
 	return &URL{ShortID: record.Key, FullURL: record.Value}, nil
 }
 
-func (r *urlRepository) CreateURL(fullURL string, userID string) (*URL, error) {
-	var err error
-
+func (r *urlRepository) CreateURL(fullURL string, userID string) (string, error) {
+	shortID := r.makeShortID()
 	record, err := r.urlStorage.Save(
 		&repository.Record{
-			Key:    r.makeShortID(),
+			Key:    shortID,
 			Value:  fullURL,
 			UserID: userID,
 		},
 	)
-	if err != nil {
-		return nil, err
+
+	switch err.(type) {
+	case *storage.NotUniqueError:
+		return record.Key, &NotUniqueURLError{}
+	case nil:
+		return shortID, nil
+	default:
+		return "", err
 	}
 
-	return &URL{ShortID: record.Key, FullURL: record.Value}, nil
 }
 
 func (r *urlRepository) CreateBatchOfURL(

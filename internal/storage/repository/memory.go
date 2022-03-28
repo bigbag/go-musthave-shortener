@@ -54,12 +54,12 @@ func (r *memoryRepository) GetAllByUserID(userID string) ([]*Record, error) {
 	return result, nil
 }
 
-func (r *memoryRepository) Save(record *Record) (*Record, error) {
+func (r *memoryRepository) Save(record *Record) error {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	r.db[record.Key] = record
-	return record, nil
+	return nil
 }
 
 func (r *memoryRepository) SaveBatchOfURL(records []*Record) error {

@@ -52,14 +52,17 @@ func (h *URLHandler) createShortURLJson(c *fiber.Ctx) error {
 	}
 
 	userID := c.Locals(h.cfg.UserContextKey).(string)
-	url, err := h.urlService.BuildURL(h.getBaseURL(c), req.FullURL, userID)
-	if err != nil {
+	shortURL, err := h.urlService.BuildURL(h.getBaseURL(c), req.FullURL, userID)
+	result := &fiber.Map{"result": shortURL}
+
+	switch err.(type) {
+	case *NotUniqueURLError:
+		return c.Status(fiber.StatusConflict).JSON(result)
+	case nil:
+		return c.Status(fiber.StatusCreated).JSON(result)
+	default:
 		return utils.SendJSONError(c, fiber.StatusInternalServerError, err.Error())
 	}
-
-	return c.Status(fiber.StatusCreated).JSON(&fiber.Map{
-		"result": url.ShortURL,
-	})
 }
 
 func (h *URLHandler) createShortURL(c *fiber.Ctx) error {
@@ -71,11 +74,16 @@ func (h *URLHandler) createShortURL(c *fiber.Ctx) error {
 	}
 
 	userID := c.Locals(h.cfg.UserContextKey).(string)
-	url, err := h.urlService.BuildURL(h.getBaseURL(c), fullURL, userID)
-	if err != nil {
+	shortURL, err := h.urlService.BuildURL(h.getBaseURL(c), fullURL, userID)
+
+	switch err.(type) {
+	case *NotUniqueURLError:
+		return c.Status(fiber.StatusConflict).SendString(shortURL)
+	case nil:
+		return c.Status(fiber.StatusCreated).SendString(shortURL)
+	default:
 		return utils.SendJSONError(c, fiber.StatusInternalServerError, err.Error())
 	}
-	return c.Status(fiber.StatusCreated).SendString(url.ShortURL)
 }
 
 func (h *URLHandler) createBatchOfShortURL(c *fiber.Ctx) error {
