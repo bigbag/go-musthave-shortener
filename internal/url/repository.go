@@ -16,6 +16,10 @@ func NewURLRepository(urlStorage storage.StorageService) URLRepository {
 	return &urlRepository{urlStorage: urlStorage}
 }
 
+func (r *urlRepository) makeShortID() string {
+	return strings.Replace(uuid.New().String(), "-", "", -1)
+}
+
 func (r *urlRepository) GetURL(shortID string) (*URL, error) {
 	record, err := r.urlStorage.GetByKey(shortID)
 	if err != nil {
@@ -27,9 +31,12 @@ func (r *urlRepository) GetURL(shortID string) (*URL, error) {
 func (r *urlRepository) CreateURL(fullURL string, userID string) (*URL, error) {
 	var err error
 
-	shortID := strings.Replace(uuid.New().String(), "-", "", -1)
 	record, err := r.urlStorage.Save(
-		&repository.Record{Key: shortID, Value: fullURL, UserID: userID},
+		&repository.Record{
+			Key:    r.makeShortID(),
+			Value:  fullURL,
+			UserID: userID,
+		},
 	)
 	if err != nil {
 		return nil, err
@@ -38,13 +45,51 @@ func (r *urlRepository) CreateURL(fullURL string, userID string) (*URL, error) {
 	return &URL{ShortID: record.Key, FullURL: record.Value}, nil
 }
 
-func (r *urlRepository) FindAllByUserID(userID string) ([]*URL, error) {
-	var url *URL
+func (r *urlRepository) CreateBatchOfURL(
+	items BatchRequest,
+	userID string,
+) ([]*URL, error) {
+	var (
+		shortID string
+		record  *repository.Record
+		url     *URL
+	)
 
+	records := make([]*repository.Record, 0, 100)
+	result := make([]*URL, 0, 100)
+	for _, item := range items {
+		shortID = r.makeShortID()
+		record = &repository.Record{
+			Key:           shortID,
+			Value:         item.FullURL,
+			UserID:        userID,
+			CorrelationID: item.CorrelationID,
+		}
+		records = append(records, record)
+
+		url = &URL{
+			ShortID:       shortID,
+			FullURL:       item.FullURL,
+			CorrelationID: item.CorrelationID,
+		}
+		result = append(result, url)
+	}
+
+	err := r.urlStorage.SaveBatchOfURL(records)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (r *urlRepository) FindAllByUserID(userID string) ([]*URL, error) {
 	records, err := r.urlStorage.GetAllByUserID(userID)
 	if err != nil {
 		return nil, err
 	}
+
+	var url *URL
 
 	result := make([]*URL, 0, 100)
 	for _, record := range records {
