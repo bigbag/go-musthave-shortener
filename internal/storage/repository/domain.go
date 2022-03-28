@@ -11,7 +11,7 @@ type StorageRepository interface {
 	GetByKey(key string) (*Record, error)
 	GetByValue(value string) (*Record, error)
 	GetAllByUserID(userID string) ([]*Record, error)
-	Save(record *Record) (*Record, error)
+	Save(record *Record) error
 	SaveBatchOfURL(records []*Record) error
 	Status() error
 	Close() error

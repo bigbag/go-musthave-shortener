@@ -73,16 +73,16 @@ func (r *fileRepository) GetAllByUserID(userID string) ([]*Record, error) {
 	return result, nil
 }
 
-func (r *fileRepository) Save(record *Record) (*Record, error) {
+func (r *fileRepository) Save(record *Record) error {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	r.db[record.Key] = record
 	if err := r.producer.Write(record); err != nil {
-		return record, err
+		return err
 	}
 
-	return record, nil
+	return nil
 }
 
 func (r *fileRepository) SaveBatchOfURL(records []*Record) error {

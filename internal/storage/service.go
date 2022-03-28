@@ -7,6 +7,12 @@ import (
 	"github.com/bigbag/go-musthave-shortener/internal/storage/repository"
 )
 
+type NotUniqueError struct{}
+
+func (e *NotUniqueError) Error() string {
+	return "not unique value"
+}
+
 type StorageService struct {
 	cfg               *config.Storage
 	storageRepository repository.StorageRepository
@@ -51,10 +57,11 @@ func (s *StorageService) Save(record *repository.Record) (*repository.Record, er
 	}
 
 	if oldRecord != nil {
-		return oldRecord, nil
+		return oldRecord, &NotUniqueError{}
 	}
 
-	return s.storageRepository.Save(record)
+	err = s.storageRepository.Save(record)
+	return record, err
 }
 
 func (s *StorageService) SaveBatchOfURL(records []*repository.Record) error {

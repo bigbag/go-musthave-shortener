@@ -1,5 +1,11 @@
 package url
 
+type NotUniqueURLError struct{}
+
+func (e *NotUniqueURLError) Error() string {
+	return "not unique url"
+}
+
 type URL struct {
 	ShortID       string
 	FullURL       string
@@ -32,7 +38,7 @@ type UserURL struct {
 
 type URLRepository interface {
 	GetURL(shortID string) (*URL, error)
-	CreateURL(fullURL string, userID string) (*URL, error)
+	CreateURL(fullURL string, userID string) (string, error)
 	CreateBatchOfURL(items BatchRequest, userID string) ([]*URL, error)
 	FindAllByUserID(userID string) ([]*URL, error)
 	Status() error
@@ -41,7 +47,7 @@ type URLRepository interface {
 
 type URLService interface {
 	FetchURL(shortID string) (*URL, error)
-	BuildURL(baseURL string, fullURL string, userID string) (*URL, error)
+	BuildURL(baseURL string, fullURL string, userID string) (string, error)
 	BuildBatchOfURL(
 		baseURL string,
 		items BatchRequest,
