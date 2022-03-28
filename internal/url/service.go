@@ -18,10 +18,9 @@ func (s *urlService) BuildURL(
 	baseURL string,
 	fullURL string,
 	userID string,
-) (*URL, error) {
-	url, err := s.urlRepository.CreateURL(fullURL, userID)
-	url.ShortURL = fmt.Sprintf("%s/%s", baseURL, url.ShortID)
-	return url, err
+) (string, error) {
+	shortID, err := s.urlRepository.CreateURL(fullURL, userID)
+	return fmt.Sprintf("%s/%s", baseURL, shortID), err
 }
 
 func (s *urlService) BuildBatchOfURL(

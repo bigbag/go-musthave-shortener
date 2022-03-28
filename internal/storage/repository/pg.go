@@ -118,7 +118,7 @@ func (r *pgRepository) GetAllByUserID(userID string) ([]*Record, error) {
 	return result, nil
 }
 
-func (r *pgRepository) Save(record *Record) (*Record, error) {
+func (r *pgRepository) Save(record *Record) error {
 	ctx, cancel := context.WithTimeout(r.ctx, r.connTimeout)
 	defer cancel()
 
@@ -126,10 +126,10 @@ func (r *pgRepository) Save(record *Record) (*Record, error) {
           			VALUES($1, $2, $3)`
 	_, err := r.conn.ExecContext(ctx, query, record.Key, record.Value, record.UserID)
 	if err != nil {
-		return record, err
+		return err
 	}
 
-	return record, nil
+	return nil
 }
 
 func (r *pgRepository) SaveBatchOfURL(records []*Record) error {
