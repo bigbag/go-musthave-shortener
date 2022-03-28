@@ -24,6 +24,33 @@ func (s *urlService) BuildURL(
 	return url, err
 }
 
+func (s *urlService) BuildBatchOfURL(
+	baseURL string,
+	items BatchRequest,
+	userID string,
+) (BatchResponse, error) {
+	urls, err := s.urlRepository.CreateBatchOfURL(items, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		shortURL  string
+		batchItem *BatchResponseItem
+	)
+
+	result := make([]*BatchResponseItem, 0, 100)
+	for _, url := range urls {
+		shortURL = fmt.Sprintf("%s/%s", baseURL, url.ShortID)
+		batchItem = &BatchResponseItem{
+			ShortURL:      shortURL,
+			CorrelationID: url.CorrelationID,
+		}
+		result = append(result, batchItem)
+	}
+	return result, nil
+}
+
 func (s *urlService) FetchURL(shortID string) (*URL, error) {
 	return s.urlRepository.GetURL(shortID)
 }

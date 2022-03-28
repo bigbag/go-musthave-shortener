@@ -19,10 +19,11 @@ func NewURLHandler(urlRoute fiber.Router, us URLService, cfg *config.Config, l l
 	urlRoute.Get("/ping", handler.getStatus)
 
 	urlRoute.Post("/", handler.createShortURL)
-	urlRoute.Get("/:shortID", handler.changeLocation)
 	urlRoute.Post("/api/shorten", handler.createShortURLJson)
-	urlRoute.Get("/api/user/urls", handler.getUserURLs)
+	urlRoute.Post("/api/shorten/batch", handler.createBatchOfShortURL)
 
+	urlRoute.Get("/:shortID", handler.changeLocation)
+	urlRoute.Get("/api/user/urls", handler.getUserURLs)
 }
 
 func (h *URLHandler) getBaseURL(c *fiber.Ctx) string {
@@ -35,15 +36,19 @@ func (h *URLHandler) getBaseURL(c *fiber.Ctx) string {
 func (h *URLHandler) getStatus(c *fiber.Ctx) error {
 	err := h.urlService.Status()
 	if err != nil {
-		return utils.SendJSONError(c, fiber.StatusInternalServerError, "PG connection error")
+		return utils.SendJSONError(
+			c, fiber.StatusInternalServerError, "PG connection error",
+		)
 	}
 	return c.Status(fiber.StatusOK).JSON(&fiber.Map{"result": "OK"})
 }
 
 func (h *URLHandler) createShortURLJson(c *fiber.Ctx) error {
-	req := new(ShortenRequest)
+	req := new(JSONRequest)
 	if err := c.BodyParser(req); err != nil {
-		return utils.SendJSONError(c, fiber.StatusBadRequest, "Please specify a valid full url")
+		return utils.SendJSONError(
+			c, fiber.StatusBadRequest, "Please specify a valid full url",
+		)
 	}
 
 	userID := c.Locals(h.cfg.UserContextKey).(string)
@@ -60,7 +65,9 @@ func (h *URLHandler) createShortURLJson(c *fiber.Ctx) error {
 func (h *URLHandler) createShortURL(c *fiber.Ctx) error {
 	fullURL := string(c.Body())
 	if fullURL == "" {
-		return utils.SendJSONError(c, fiber.StatusBadRequest, "Please specify a valid full url")
+		return utils.SendJSONError(
+			c, fiber.StatusBadRequest, "Please specify a valid full url",
+		)
 	}
 
 	userID := c.Locals(h.cfg.UserContextKey).(string)
@@ -71,10 +78,30 @@ func (h *URLHandler) createShortURL(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).SendString(url.ShortURL)
 }
 
+func (h *URLHandler) createBatchOfShortURL(c *fiber.Ctx) error {
+	var items BatchRequest
+
+	if err := c.BodyParser(&items); err != nil {
+		return utils.SendJSONError(
+			c, fiber.StatusBadRequest, "Please specify a valid barch request",
+		)
+	}
+
+	userID := c.Locals(h.cfg.UserContextKey).(string)
+	result, err := h.urlService.BuildBatchOfURL(h.getBaseURL(c), items, userID)
+	if err != nil {
+		return utils.SendJSONError(c, fiber.StatusInternalServerError, err.Error())
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(result)
+}
+
 func (h *URLHandler) changeLocation(c *fiber.Ctx) error {
 	shortID := c.Params("shortID")
 	if shortID == "" {
-		return utils.SendJSONError(c, fiber.StatusBadRequest, "Please specify a valid short id")
+		return utils.SendJSONError(
+			c, fiber.StatusBadRequest, "Please specify a valid short id",
+		)
 	}
 
 	url, err := h.urlService.FetchURL(shortID)

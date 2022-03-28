@@ -43,6 +43,7 @@ func (r *pgRepository) init() error {
 				key VARCHAR NOT NULL,
 				value VARCHAR NOT NULL,
 				user_id VARCHAR NOT NULL,
+				correlation_id VARCHAR NULL,
 				PRIMARY KEY (key),
 				UNIQUE (value)
 			);`,
@@ -122,13 +123,53 @@ func (r *pgRepository) Save(record *Record) (*Record, error) {
 	defer cancel()
 
 	query := `INSERT INTO urls(key, value, user_id) 
-          VALUES($1, $2, $3)`
+          			VALUES($1, $2, $3)`
 	_, err := r.conn.ExecContext(ctx, query, record.Key, record.Value, record.UserID)
 	if err != nil {
 		return record, err
 	}
 
 	return record, nil
+}
+
+func (r *pgRepository) SaveBatchOfURL(records []*Record) error {
+	ctx, cancel := context.WithTimeout(r.ctx, r.connTimeout)
+	defer cancel()
+
+	tx, err := r.conn.Begin()
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(
+		ctx,
+		`INSERT INTO urls(key, value, user_id, correlation_id)
+				VALUES($1, $2, $3, $4)`,
+	)
+	if err != nil {
+		return err
+	}
+
+	for _, record := range records {
+		if _, err = stmt.ExecContext(
+			ctx, record.Key,
+			record.Value,
+			record.UserID,
+			record.CorrelationID,
+		); err != nil {
+			return err
+		}
+	}
+
+	defer stmt.Close()
+
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *pgRepository) Status() error {

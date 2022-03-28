@@ -57,6 +57,10 @@ func (s *StorageService) Save(record *repository.Record) (*repository.Record, er
 	return s.storageRepository.Save(record)
 }
 
+func (s *StorageService) SaveBatchOfURL(records []*repository.Record) error {
+	return s.storageRepository.SaveBatchOfURL(records)
+}
+
 func (s *StorageService) Status() error {
 	return s.storageRepository.Status()
 }
