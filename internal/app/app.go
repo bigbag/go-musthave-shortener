@@ -51,7 +51,7 @@ func New(l logrus.FieldLogger, cfg *config.Config) *Server {
 	}))
 
 	ctxBg := context.Background()
-	urlStorage, _ := storage.NewStorageService(cfg.Storage, ctxBg)
+	urlStorage, _ := storage.NewStorageService(ctxBg, cfg.Storage)
 
 	urlRepository := url.NewURLRepository(urlStorage)
 	urlService := url.NewURLService(urlRepository)
