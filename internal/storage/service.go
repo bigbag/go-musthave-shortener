@@ -18,7 +18,7 @@ type StorageService struct {
 	storageRepository repository.StorageRepository
 }
 
-func NewStorageService(cfg *config.Storage, ctx context.Context) (StorageService, error) {
+func NewStorageService(ctx context.Context, cfg *config.Storage) (StorageService, error) {
 	var (
 		r   repository.StorageRepository
 		err error
