@@ -73,27 +73,55 @@ func (r *fileRepository) GetAllByUserID(userID string) ([]*Record, error) {
 	return result, nil
 }
 
-func (r *fileRepository) Save(record *Record) error {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	r.db[record.Key] = record
+func (r *fileRepository) dump(record *Record) error {
 	if err := r.producer.Write(record); err != nil {
 		return err
 	}
-
 	return nil
 }
 
+func (r *fileRepository) Save(record *Record) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.db[record.Key] = record
+	return r.dump(record)
+}
+
 func (r *fileRepository) SaveBatchOfURL(records []*Record) error {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	var err error
 
 	for _, record := range records {
 		r.db[record.Key] = record
-		if err = r.producer.Write(record); err != nil {
+		if err = r.dump(record); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *fileRepository) DeleteByUserID(userID string, keys []string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var err error
+
+	for _, key := range keys {
+		record, ok := r.db[key]
+		if !ok {
+			continue
+		}
+		if !record.IsOwner(userID) {
+			continue
+		}
+		record.Removed = true
+		r.db[key] = record
+
+		if err = r.dump(record); err != nil {
 			return err
 		}
 	}

@@ -55,19 +55,37 @@ func (r *memoryRepository) GetAllByUserID(userID string) ([]*Record, error) {
 }
 
 func (r *memoryRepository) Save(record *Record) error {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	r.db[record.Key] = record
 	return nil
 }
 
 func (r *memoryRepository) SaveBatchOfURL(records []*Record) error {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
 	for _, record := range records {
 		r.db[record.Key] = record
+	}
+	return nil
+}
+
+func (r *memoryRepository) DeleteByUserID(userID string, keys []string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, key := range keys {
+		record, ok := r.db[key]
+		if !ok {
+			continue
+		}
+		if !record.IsOwner(userID) {
+			continue
+		}
+		record.Removed = true
+		r.db[key] = record
 	}
 	return nil
 }

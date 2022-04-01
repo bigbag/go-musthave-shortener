@@ -20,6 +20,7 @@ import (
 type Server struct {
 	l logrus.FieldLogger
 	f *fiber.App
+	p *url.TaskPool
 }
 
 func New(l logrus.FieldLogger, cfg *config.Config) *Server {
@@ -54,10 +55,12 @@ func New(l logrus.FieldLogger, cfg *config.Config) *Server {
 	urlStorage, _ := storage.NewStorageService(ctxBg, cfg.Storage)
 
 	urlRepository := url.NewURLRepository(urlStorage)
-	urlService := url.NewURLService(urlRepository)
+
+	urlPool := url.NewTaskPool(ctxBg, l, urlRepository)
+	urlService := url.NewURLService(l, urlRepository, urlPool)
 	url.NewURLHandler(f.Group(""), urlService, cfg, l)
 
-	return &Server{l: l, f: f}
+	return &Server{l: l, f: f, p: urlPool}
 }
 
 func (s *Server) Start(addr string) error {
@@ -65,5 +68,6 @@ func (s *Server) Start(addr string) error {
 }
 
 func (s *Server) Stop() error {
+	s.p.Close()
 	return s.f.Shutdown()
 }

@@ -14,8 +14,8 @@ func (e *NotUniqueError) Error() string {
 }
 
 type StorageService struct {
-	cfg               *config.Storage
-	storageRepository repository.StorageRepository
+	cfg *config.Storage
+	r   repository.StorageRepository
 }
 
 func NewStorageService(ctx context.Context, cfg *config.Storage) (StorageService, error) {
@@ -34,7 +34,7 @@ func NewStorageService(ctx context.Context, cfg *config.Storage) (StorageService
 		}
 	}
 
-	service := StorageService{storageRepository: r, cfg: cfg}
+	service := StorageService{r: r, cfg: cfg}
 	if err != nil {
 		return service, err
 	}
@@ -43,15 +43,15 @@ func NewStorageService(ctx context.Context, cfg *config.Storage) (StorageService
 }
 
 func (s *StorageService) GetByKey(key string) (*repository.Record, error) {
-	return s.storageRepository.GetByKey(key)
+	return s.r.GetByKey(key)
 }
 
 func (s *StorageService) GetAllByUserID(userID string) ([]*repository.Record, error) {
-	return s.storageRepository.GetAllByUserID(userID)
+	return s.r.GetAllByUserID(userID)
 }
 
 func (s *StorageService) Save(record *repository.Record) (*repository.Record, error) {
-	oldRecord, err := s.storageRepository.GetByValue(record.Value)
+	oldRecord, err := s.r.GetByValue(record.Value)
 	if err != nil {
 		return oldRecord, err
 	}
@@ -60,18 +60,42 @@ func (s *StorageService) Save(record *repository.Record) (*repository.Record, er
 		return oldRecord, &NotUniqueError{}
 	}
 
-	err = s.storageRepository.Save(record)
+	err = s.r.Save(record)
 	return record, err
 }
 
-func (s *StorageService) SaveBatchOfURL(records []*repository.Record) error {
-	return s.storageRepository.SaveBatchOfURL(records)
+func (s *StorageService) SaveBatchOfRecord(
+	records []*repository.Record,
+) ([]*repository.Record, error) {
+	var oldRecord *repository.Record
+
+	newRecords := make([]*repository.Record, 0, 100)
+	result := make([]*repository.Record, 0, 100)
+	for _, record := range records {
+		oldRecord, _ = s.r.GetByValue(record.Value)
+		if oldRecord == nil {
+			newRecords = append(newRecords, record)
+			result = append(result, record)
+		} else {
+			result = append(result, oldRecord)
+		}
+	}
+	err := s.r.SaveBatchOfURL(newRecords)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (s *StorageService) DeleteByUserID(userID string, shortIDs []string) error {
+	return s.r.DeleteByUserID(userID, shortIDs)
 }
 
 func (s *StorageService) Status() error {
-	return s.storageRepository.Status()
+	return s.r.Status()
 }
 
 func (s *StorageService) Shutdown() error {
-	return s.storageRepository.Close()
+	return s.r.Close()
 }

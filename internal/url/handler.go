@@ -24,6 +24,8 @@ func NewURLHandler(urlRoute fiber.Router, us URLService, cfg *config.Config, l l
 
 	urlRoute.Get("/:shortID", handler.changeLocation)
 	urlRoute.Get("/api/user/urls", handler.getUserURLs)
+
+	urlRoute.Delete("/api/user/urls", handler.deleteUserURLs)
 }
 
 func (h *URLHandler) getBaseURL(c *fiber.Ctx) string {
@@ -115,9 +117,13 @@ func (h *URLHandler) changeLocation(c *fiber.Ctx) error {
 	url, err := h.urlService.FetchURL(shortID)
 	if err != nil {
 		if url == nil {
-			return utils.SendJSONError(c, fiber.StatusNotFound, err.Error())
+			return utils.SendJSONError(c, fiber.StatusNotFound, "url not found")
 		}
 		return utils.SendJSONError(c, fiber.StatusInternalServerError, err.Error())
+	}
+
+	if url.Removed {
+		return utils.SendJSONError(c, fiber.StatusGone, "url was removed")
 	}
 
 	c.Location(url.FullURL)
@@ -138,4 +144,27 @@ func (h *URLHandler) getUserURLs(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(result)
+}
+
+func (h *URLHandler) deleteUserURLs(c *fiber.Ctx) error {
+	var shortIDs []string
+
+	if err := c.BodyParser(&shortIDs); err != nil {
+		return utils.SendJSONError(
+			c, fiber.StatusBadRequest, "Please specify a valid delete request",
+		)
+	}
+
+	if len(shortIDs) == 0 {
+		return utils.SendJSONError(
+			c, fiber.StatusBadRequest, "Please specify a valid delete request",
+		)
+	}
+
+	userID := c.Locals(h.cfg.UserContextKey).(string)
+	if err := h.urlService.DeleteUserURLs(userID, shortIDs); err != nil {
+		return utils.SendJSONError(c, fiber.StatusInternalServerError, err.Error())
+	}
+
+	return c.Status(fiber.StatusAccepted).SendString("")
 }

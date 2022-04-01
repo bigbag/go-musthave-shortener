@@ -2,16 +2,20 @@ package url
 
 import (
 	"fmt"
+	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 type urlService struct {
-	urlRepository URLRepository
+	l             logrus.FieldLogger
+	r             URLRepository
+	p             *TaskPool
+	deleteTimeout time.Duration
 }
 
-func NewURLService(r URLRepository) URLService {
-	return &urlService{
-		urlRepository: r,
-	}
+func NewURLService(l logrus.FieldLogger, r URLRepository, p *TaskPool) URLService {
+	return &urlService{l: l, r: r, p: p}
 }
 
 func (s *urlService) BuildURL(
@@ -19,7 +23,7 @@ func (s *urlService) BuildURL(
 	fullURL string,
 	userID string,
 ) (string, error) {
-	shortID, err := s.urlRepository.CreateURL(fullURL, userID)
+	shortID, err := s.r.CreateURL(fullURL, userID)
 	return fmt.Sprintf("%s/%s", baseURL, shortID), err
 }
 
@@ -28,7 +32,7 @@ func (s *urlService) BuildBatchOfURL(
 	items BatchRequest,
 	userID string,
 ) (BatchResponse, error) {
-	urls, err := s.urlRepository.CreateBatchOfURL(items, userID)
+	urls, err := s.r.CreateBatchOfURL(items, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -51,14 +55,14 @@ func (s *urlService) BuildBatchOfURL(
 }
 
 func (s *urlService) FetchURL(shortID string) (*URL, error) {
-	return s.urlRepository.GetURL(shortID)
+	return s.r.GetURL(shortID)
 }
 
 func (s *urlService) FetchUserURLs(
 	baseURL string,
 	userID string,
 ) ([]*UserURL, error) {
-	urls, err := s.urlRepository.FindAllByUserID(userID)
+	urls, err := s.r.FindAllByUserID(userID)
 	if err != nil {
 		return nil, err
 	}
@@ -73,10 +77,14 @@ func (s *urlService) FetchUserURLs(
 	return result, nil
 }
 
+func (s *urlService) DeleteUserURLs(userID string, shortIDs []string) error {
+	return s.p.Push(userID, shortIDs)
+}
+
 func (s *urlService) Status() error {
-	return s.urlRepository.Status()
+	return s.r.Status()
 }
 
 func (s *urlService) Shutdown() error {
-	return s.urlRepository.Close()
+	return s.r.Close()
 }

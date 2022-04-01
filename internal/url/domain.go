@@ -11,6 +11,7 @@ type URL struct {
 	FullURL       string
 	ShortURL      string
 	CorrelationID string
+	Removed       bool
 }
 
 type JSONRequest struct {
@@ -38,22 +39,24 @@ type UserURL struct {
 
 type URLRepository interface {
 	GetURL(shortID string) (*URL, error)
+	FindAllByUserID(userID string) ([]*URL, error)
 	CreateURL(fullURL string, userID string) (string, error)
 	CreateBatchOfURL(items BatchRequest, userID string) ([]*URL, error)
-	FindAllByUserID(userID string) ([]*URL, error)
+	DeleteUserURLs(userID string, shortIDs []string) error
 	Status() error
 	Close() error
 }
 
 type URLService interface {
 	FetchURL(shortID string) (*URL, error)
+	FetchUserURLs(baseURL string, userID string) ([]*UserURL, error)
 	BuildURL(baseURL string, fullURL string, userID string) (string, error)
 	BuildBatchOfURL(
 		baseURL string,
 		items BatchRequest,
 		userID string,
 	) (BatchResponse, error)
-	FetchUserURLs(baseURL string, userID string) ([]*UserURL, error)
+	DeleteUserURLs(userID string, shortIDs []string) error
 	Status() error
 	Shutdown() error
 }
