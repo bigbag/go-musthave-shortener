@@ -9,11 +9,11 @@ import (
 )
 
 type urlRepository struct {
-	urlStorage storage.StorageService
+	s storage.StorageService
 }
 
-func NewURLRepository(urlStorage storage.StorageService) URLRepository {
-	return &urlRepository{urlStorage: urlStorage}
+func NewURLRepository(s storage.StorageService) URLRepository {
+	return &urlRepository{s: s}
 }
 
 func (r *urlRepository) makeShortID() string {
@@ -21,20 +21,24 @@ func (r *urlRepository) makeShortID() string {
 }
 
 func (r *urlRepository) GetURL(shortID string) (*URL, error) {
-	record, err := r.urlStorage.GetByKey(shortID)
+	record, err := r.s.GetByKey(shortID)
 	if err != nil {
 		return nil, err
 	}
-	return &URL{ShortID: record.Key, FullURL: record.Value}, nil
+	return &URL{
+		ShortID: record.Key,
+		FullURL: record.Value,
+		Removed: record.Removed,
+	}, nil
 }
 
 func (r *urlRepository) CreateURL(fullURL string, userID string) (string, error) {
-	shortID := r.makeShortID()
-	record, err := r.urlStorage.Save(
+	record, err := r.s.Save(
 		&repository.Record{
-			Key:    shortID,
-			Value:  fullURL,
-			UserID: userID,
+			Key:     r.makeShortID(),
+			Value:   fullURL,
+			UserID:  userID,
+			Removed: false,
 		},
 	)
 
@@ -42,7 +46,7 @@ func (r *urlRepository) CreateURL(fullURL string, userID string) (string, error)
 	case *storage.NotUniqueError:
 		return record.Key, &NotUniqueURLError{}
 	case nil:
-		return shortID, nil
+		return record.Key, nil
 	default:
 		return "", err
 	}
@@ -54,41 +58,44 @@ func (r *urlRepository) CreateBatchOfURL(
 	userID string,
 ) ([]*URL, error) {
 	var (
-		shortID string
-		record  *repository.Record
-		url     *URL
+		record *repository.Record
+		url    *URL
 	)
 
-	records := make([]*repository.Record, 0, 100)
-	result := make([]*URL, 0, 100)
+	recordsForSave := make([]*repository.Record, 0, 100)
 	for _, item := range items {
-		shortID = r.makeShortID()
 		record = &repository.Record{
-			Key:           shortID,
+			Key:           r.makeShortID(),
 			Value:         item.FullURL,
 			UserID:        userID,
+			Removed:       false,
 			CorrelationID: item.CorrelationID,
 		}
-		records = append(records, record)
+		recordsForSave = append(recordsForSave, record)
 
-		url = &URL{
-			ShortID:       shortID,
-			FullURL:       item.FullURL,
-			CorrelationID: item.CorrelationID,
-		}
-		result = append(result, url)
 	}
 
-	err := r.urlStorage.SaveBatchOfURL(records)
+	records, err := r.s.SaveBatchOfRecord(recordsForSave)
 	if err != nil {
 		return nil, err
+	}
+
+	result := make([]*URL, 0, 100)
+	for _, record := range records {
+		url = &URL{
+			ShortID:       record.Key,
+			FullURL:       record.Value,
+			CorrelationID: record.CorrelationID,
+			Removed:       record.Removed,
+		}
+		result = append(result, url)
 	}
 
 	return result, nil
 }
 
 func (r *urlRepository) FindAllByUserID(userID string) ([]*URL, error) {
-	records, err := r.urlStorage.GetAllByUserID(userID)
+	records, err := r.s.GetAllByUserID(userID)
 	if err != nil {
 		return nil, err
 	}
@@ -103,10 +110,14 @@ func (r *urlRepository) FindAllByUserID(userID string) ([]*URL, error) {
 	return result, nil
 }
 
+func (r *urlRepository) DeleteUserURLs(userID string, shortIDs []string) error {
+	return r.s.DeleteByUserID(userID, shortIDs)
+}
+
 func (r *urlRepository) Status() error {
-	return r.urlStorage.Status()
+	return r.s.Status()
 }
 
 func (r *urlRepository) Close() error {
-	return r.urlStorage.Shutdown()
+	return r.s.Shutdown()
 }
